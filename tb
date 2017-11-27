@@ -3,6 +3,7 @@
 import pdb
 import sys
 import traceback
+from xml.dom import expatbuilder
 import click
 import dbus
 import dbus.glib
@@ -117,9 +118,44 @@ def mknote(title, show):
     #     see: https://osmanov-dev-notes.blogspot.com/2010/10/importing-text-files-into-tomboy.html
     tomboy.DisplayNote(new_note)
     tomboy.AddTagToNote(new_note, "commandline")
-    rv = tomboy.SetNoteContents(new_note, contents)
+    tomboy.SetNoteContents(new_note, contents)
     if not show:
         tomboy.HideNote(new_note)
+
+
+@tb.command('dup')
+@click.argument('note')
+@click.option('--new-title', '-t', help='title for the new note')
+@click.option('--show/--no-show', '-s/')
+def dup(note, new_title, show):
+    """Duplicate a note"""
+    src = tomboy.FindNote(note)
+    if not src:
+        print('No such note: %s' % note)
+        return 1
+    if not new_title:
+        new_title = "Copy of %s" % tomboy.GetNoteTitle(src)
+    chk = tomboy.FindNote(new_title)
+    if chk:
+        print('Already exists: %s' % new_title)
+        return 1
+    contents = tomboy.GetNoteContentsXml(src)
+    if not contents:
+        # should not happen
+        print('No contents for note: %s' % src)
+        return 1
+    # change title in contents
+    document = expatbuilder.parseString(contents, False)
+    top = document.getElementsByTagName('note-content')[0]
+    # title should be first text element
+    # TODO asserts
+    top.firstChild.data = new_title + '\n\n'
+    contents = top.toxml()
+    new_note = tomboy.CreateNamedNote(new_title)
+    tomboy.AddTagToNote(new_note, "duplicate")
+    tomboy.SetNoteContentsXml(new_note, contents)
+    if show:
+        tomboy.DisplayNote(new_note)
 
 
 if __name__ == '__main__':
