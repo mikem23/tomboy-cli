@@ -1,4 +1,5 @@
 #!/usr/bin/python
+
 import pdb
 import sys
 import traceback
@@ -18,10 +19,65 @@ def tb():
 
 
 @tb.command('list')
-def list():
-    titles = [tomboy.GetNoteTitle(n) for n in tomboy.ListAllNotes()]
+@click.option('-t', '--tag', help='list notes with tag')
+def list(tag):
+    if tag:
+        notes = tomboy.GetAllNotesWithTag(tag)
+    else:
+        notes = tomboy.ListAllNotes()
+    titles = [tomboy.GetNoteTitle(n) for n in notes]
     for t in sorted(titles):
         print(t)
+
+
+@tb.command('start')
+def start():
+    # Display the Start Here note
+    tomboy.DisplayNote(tomboy.FindStartHereNote())
+
+
+@tb.command('show')
+@click.argument('note')
+@click.option('--xml/--no-xml', help='show complete xml')
+def show(note, xml):
+    # Display the contents of the note
+    note = tomboy.FindNote(note)
+    if xml:
+        print tomboy.GetNoteCompleteXml(note)
+    else:
+        print tomboy.GetNoteContents(note)
+
+
+@tb.command('tag')
+@click.argument('note')
+@click.argument('tag')
+def tag(note, tag):
+    tomboy.AddTagToNote(tomboy.FindNote(note), tag)
+    # NOTE - tags are not the same as notebooks and do *not* appear in he UI
+
+
+@tb.command()
+def watch():
+    """Watch Tomboy activity"""
+    bus = dbus.SessionBus()
+
+    def onNoteAdded(n):
+        print "Note created: %s" % n
+    bus.add_signal_receiver(
+            onNoteAdded,
+            dbus_interface="org.gnome.Tomboy.RemoteControl",
+            signal_name="NoteAdded")
+
+    # Notify when a note is saved
+    def onNoteSaved(n):
+        print "Note %s saved!" % tomboy.GetNoteTitle(n)
+    bus.add_signal_receiver(
+            onNoteSaved,
+            dbus_interface="org.gnome.Tomboy.RemoteControl",
+            signal_name="NoteSaved")
+
+    # Loop until manually terminated
+    gobject.MainLoop().run()
 
 
 def setup():
@@ -29,71 +85,34 @@ def setup():
     # Get the D-Bus session bus
     bus = dbus.SessionBus()
     # Access the Tomboy D-Bus object
-    obj = bus.get_object("org.gnome.Tomboy",
-      "/org/gnome/Tomboy/RemoteControl")
+    obj = bus.get_object(
+            "org.gnome.Tomboy",
+            "/org/gnome/Tomboy/RemoteControl")
     # Access the Tomboy remote control interface
     tomboy = dbus.Interface(obj, "org.gnome.Tomboy.RemoteControl")
 
 
-def example1():
+@tb.command('mknote')
+@click.argument('title', nargs=-1)
+def mknote(title):
+    """Create a note with title from cmdline and contents from stdin"""
 
-    # Display the Start Here note
-    tomboy.DisplayNote(tomboy.FindStartHereNote())
+    if title:
+        title = ' '.join(title)
+        new_note = tomboy.CreateNamedNote(title)
+    else:
+        new_note = tomboy.CreateNote()
 
-    # Display the title of every note
-    for n in tomboy.ListAllNotes(): print tomboy.GetNoteTitle(n)
+    if not new_note:
+        print('Unable to create note: %s' % title)
+        return
 
-    # Display the contents of the note called Test
-    print tomboy.GetNoteContents(tomboy.FindNote("Test"))
-
-    # Add a tag to the note called Test
-    tomboy.AddTagToNote(tomboy.FindNote("Test"), "sampletag")
-
-    # Display the titles of all notes with the tag 'sampletag'
-    for note in tomboy.GetAllNotesWithTag("sampletag"):
-      print tomboy.GetNoteTitle(note)
-
-    # Print the XML data for the note called Test
-    print tomboy.GetNoteCompleteXml(tomboy.FindNote("Test"))
-
-    # Programs can also create signal receivers that hook events exposed by the Tomboy remote control interface. For instance, the program can perform a certain action when a new note is created by associating a function with the NoteAdded signal:
-
-    # Notify when a new note is created
-    def onNoteAdded(n): print "Note created: %s" % n
-    bus.add_signal_receiver(onNoteAdded,
-      dbus_interface="org.gnome.Tomboy.RemoteControl",
-      signal_name="NoteAdded")
-
-    # Notify when a note is saved
-    def onNoteSaved(n): print "Note %s saved!" % tomboy.GetNoteTitle(n)
-    bus.add_signal_receiver(onNoteSaved,
-      dbus_interface="org.gnome.Tomboy.RemoteControl",
-      signal_name="NoteSaved")
-
-    # Loop until manually terminated
-    gobject.MainLoop().run()
-
-
-def mknote():
-    # When I'm using the command line, I often copy the output of a command and then paste it into a Tomboy note. In order to simplify that task, I decided to create a command-line utility that can be used to pipe the output of a command directly into a new Tomboy note. This tool was relatively easy to make with the Tomboy D-Bus interface:
-
-    bus = dbus.SessionBus()
-    obj = bus.get_object("org.gnome.Tomboy", "/org/gnome/Tomboy/RemoteControl")
-    tomboy = dbus.Interface(obj, "org.gnome.Tomboy.RemoteControl")
-
-    if len(sys.argv) > 1: new_note = tomboy.CreateNamedNote(" ".join(sys.argv[1:]))
-    else: new_note = tomboy.CreateNote()
-
-    tomboy.SetNoteContents(new_note,
-      tomboy.GetNoteTitle(new_note) + "nn" + sys.stdin.read())
+    tomboy.SetNoteContents(
+            new_note,
+            tomboy.GetNoteTitle(new_note) + "\n\n" + sys.stdin.read())
+    # XXX - the contents part is not working
     tomboy.AddTagToNote(new_note, "commandline")
     tomboy.DisplayNote(new_note)
-
-    # Save the code above in a file called makenote and place it in a directory that is in your command path. Use chmod to make it executable, and then, try this at the command line:
-
-
-def main():
-    mknote()
 
 
 if __name__ == '__main__':
@@ -104,4 +123,3 @@ if __name__ == '__main__':
         etype, e, tb = sys.exc_info()
         traceback.print_exc()
         pdb.post_mortem(tb)
-                                    
