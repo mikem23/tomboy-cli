@@ -21,6 +21,7 @@ def tb():
 @tb.command('list')
 @click.option('-t', '--tag', help='list notes with tag')
 def list(tag):
+    """List notes"""
     if tag:
         notes = tomboy.GetAllNotesWithTag(tag)
     else:
@@ -32,7 +33,7 @@ def list(tag):
 
 @tb.command('start')
 def start():
-    # Display the Start Here note
+    """Display the Start Here note"""
     tomboy.DisplayNote(tomboy.FindStartHereNote())
 
 
@@ -40,7 +41,7 @@ def start():
 @click.argument('note')
 @click.option('--xml/--no-xml', help='show complete xml')
 def show(note, xml):
-    # Display the contents of the note
+    """Output the contents of the note"""
     note = tomboy.FindNote(note)
     if xml:
         print tomboy.GetNoteCompleteXml(note)
@@ -52,6 +53,7 @@ def show(note, xml):
 @click.argument('note')
 @click.argument('tag')
 def tag(note, tag):
+    """Add a tag to a note"""
     tomboy.AddTagToNote(tomboy.FindNote(note), tag)
     # NOTE - tags are not the same as notebooks and do *not* appear in he UI
 
@@ -96,7 +98,7 @@ def setup():
 @click.argument('title', nargs=-1)
 @click.option('--show/--no-show', '-s/')
 def mknote(title, show):
-    """Create a note with title from cmdline and contents from stdin"""
+    """Create a note from stdin"""
 
     if title:
         title = ' '.join(title)
