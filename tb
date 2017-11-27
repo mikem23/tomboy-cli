@@ -41,11 +41,15 @@ def start():
 @tb.command('show')
 @click.argument('note')
 @click.option('--xml/--no-xml', help='show complete xml')
-def show(note, xml):
+@click.option('--xc/', '--xml-contents/--no-xml-contents',
+              help='show xml contents')
+def show(note, xml, xml_contents):
     """Output the contents of the note"""
     note = tomboy.FindNote(note)
     if xml:
         print tomboy.GetNoteCompleteXml(note)
+    elif xml_contents:
+        print tomboy.GetNoteContentsXml(note)
     else:
         print tomboy.GetNoteContents(note)
 
