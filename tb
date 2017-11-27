@@ -151,9 +151,19 @@ def dup(note, new_title, show):
     # change title in contents
     document = expatbuilder.parseString(contents, False)
     top = document.getElementsByTagName('note-content')[0]
-    # title should be first text element
-    # TODO asserts
-    top.firstChild.data = new_title + '\n\n'
+    # [!] TomBoy has a questionable design here with the literal html-ish
+    #     content included directly in the node. This content uses literal
+    #     whitespace and expects the first line to be match the title.
+    #     That is why we have the following assertions
+    node = top.firstChild
+    if node.nodeType != node.TEXT_NODE:
+        # Could happen if title has formatting
+        raise ValueError('Unable to find title')
+    parts = node.data.split('\n\n', 1)
+    if len(parts) < 2:
+        raise ValueError('Unable to find title')
+    # ok, replace the title
+    node.data = new_title + '\n\n' + parts[1]
     contents = top.toxml()
     new_note = tomboy.CreateNamedNote(new_title)
     tomboy.AddTagToNote(new_note, "duplicate")
