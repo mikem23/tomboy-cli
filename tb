@@ -1,11 +1,27 @@
 #!/usr/bin/python
+import pdb
 import sys
+import traceback
+import click
 import dbus
 import dbus.glib
 import gobject
 
 # Simple app using Tomboy dbus api
 # see: https://arstechnica.com/information-technology/2007/09/using-the-tomboy-d-bus-interface/
+
+
+@click.group()
+def tb():
+    # main command
+    pass
+
+
+@tb.command('list')
+def list():
+    titles = [tomboy.GetNoteTitle(n) for n in tomboy.ListAllNotes()]
+    for t in sorted(titles):
+        print(t)
 
 
 def setup():
@@ -77,8 +93,15 @@ def mknote():
 
 
 def main():
-    pass
+    mknote()
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        setup()
+        tb()
+    except Exception:
+        etype, e, tb = sys.exc_info()
+        traceback.print_exc()
+        pdb.post_mortem(tb)
+                                    
