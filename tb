@@ -78,20 +78,26 @@ def watch():
     """Watch Tomboy activity"""
     bus = dbus.SessionBus()
 
-    def onNoteAdded(n):
-        print "Note created: %s" % n
+    def onNoteAdded(uri):
+        print "Note created: %s" % uri
     bus.add_signal_receiver(
             onNoteAdded,
             dbus_interface="org.gnome.Tomboy.RemoteControl",
             signal_name="NoteAdded")
 
-    # Notify when a note is saved
-    def onNoteSaved(n):
-        print "Note %s saved!" % tomboy.GetNoteTitle(n)
+    def onNoteSaved(uri):
+        print "Note %s saved!" % tomboy.GetNoteTitle(uri)
     bus.add_signal_receiver(
             onNoteSaved,
             dbus_interface="org.gnome.Tomboy.RemoteControl",
             signal_name="NoteSaved")
+
+    def onNoteDeleted(uri, title):
+        print "Note %s deleted! (was %s)" % (title, uri)
+    bus.add_signal_receiver(
+            onNoteDeleted,
+            dbus_interface="org.gnome.Tomboy.RemoteControl",
+            signal_name="NoteDeleted")
 
     # Loop until manually terminated
     gobject.MainLoop().run()
