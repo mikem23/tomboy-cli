@@ -104,7 +104,8 @@ def setup():
 @click.option('--show/--no-show', '-s/')
 @click.option('--xml/--no-xml', '-x/')
 @click.option('-f', '--file', '--filename')
-def mknote(title, show, xml, filename):
+@click.option('--test/--no-test', '-n/')
+def mknote(title, show, xml, filename, test):
     """Create a note from stdin or file"""
 
     # read our content
@@ -130,24 +131,38 @@ def mknote(title, show, xml, filename):
     # sort out our title
     if title:
         title = ' '.join(title)
-        new_note = tomboy.CreateNamedNote(title)
+        if test:
+            new_note = 'TEST'
+        else:
+            new_note = tomboy.CreateNamedNote(title)
     else:
-        new_note = tomboy.CreateNote()
-        title = tomboy.GetNoteTitle(new_note)
-        print('New note: %s' % title)
+        if test:
+            title = 'UNKNOWN'
+            new_note = 'TEST'
+        else:
+            new_note = tomboy.CreateNote()
+            title = tomboy.GetNoteTitle(new_note)
+    print('New note: %s' % title)
 
     if not new_note:
         print('Unable to create note: %s' % title)
         return 1
 
-    tomboy.AddTagToNote(new_note, "commandline")
+    if not test:
+        tomboy.AddTagToNote(new_note, "commandline")
+
     if xml:
         # replace the title in contents
         node.data = title + '\n\n' + parts[1]
         contents = top.toxml()
+        if test:
+            print(contents)
+            return
         tomboy.SetNoteContentsXml(new_note, contents)
         if show:
             tomboy.DisplayNote(new_note)
+    elif test:
+        return
     else:
         contents = tomboy.GetNoteTitle(new_note) + "\n\n" + contents
         # [!] Workaround for a bug in Tomboy
