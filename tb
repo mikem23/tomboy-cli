@@ -21,15 +21,23 @@ def tb():
 
 @tb.command('list')
 @click.option('-t', '--tag', help='list notes with tag')
-def list(tag):
+@click.option('-b/', '--notebook', help='list notes in notebook')
+@click.option('--show-tags/--no-show-tags', help='show tags')
+def list(tag, notebook, show_tags):
     """List notes"""
+    if notebook:
+        tag = "system:notebook:%s" % notebook
     if tag:
         notes = tomboy.GetAllNotesWithTag(tag)
     else:
         notes = tomboy.ListAllNotes()
-    titles = [tomboy.GetNoteTitle(n) for n in notes]
-    for t in sorted(titles):
-        print(t)
+    titles = [(tomboy.GetNoteTitle(n), n) for n in notes]
+    for title, uri in sorted(titles):
+        print(title)
+        if show_tags:
+            tags = tomboy.GetTagsForNote(uri) or []
+            for t in tags:
+                print "    - %s" % t
 
 
 @tb.command('start')
@@ -55,12 +63,14 @@ def show(note, xml, xml_contents):
 
 
 @tb.command('tag')
+@click.option('-b/', '--notebook/--no-notebook', help='add notebook tag')
 @click.argument('note')
 @click.argument('tag')
-def tag(note, tag):
+def tag(notebook, note, tag):
     """Add a tag to a note"""
+    if notebook:
+        tag = "system:notebook:archive:%s"
     tomboy.AddTagToNote(tomboy.FindNote(note), tag)
-    # NOTE - tags are not the same as notebooks and do *not* appear in he UI
 
 
 @tb.command()
