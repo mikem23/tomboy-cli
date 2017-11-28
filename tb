@@ -107,25 +107,44 @@ def setup():
 def mknote(title, show, xml, filename):
     """Create a note from stdin or file"""
 
-    if title:
-        title = ' '.join(title)
-        new_note = tomboy.CreateNamedNote(title)
-    else:
-        new_note = tomboy.CreateNote()
-        print('New note: %s' % tomboy.GetNoteTitle(new_note))
-
-    if not new_note:
-        print('Unable to create note: %s' % title)
-        return
-
+    # read our content
     if filename:
         with open(filename, 'r') as fp:
             contents = fp.read()
     else:
         contents = sys.stdin.read()
+
+    # and validate it
+    if xml:
+        document = expatbuilder.parseString(contents, False)
+        top = document.getElementsByTagName('note-content')[0]
+        # TODO - combine with similar code in dup command
+        node = top.firstChild
+        if node.nodeType != node.TEXT_NODE:
+            # Could happen if title has formatting
+            raise ValueError('Unable to find title')
+        parts = node.data.split('\n\n', 1)
+        if len(parts) < 2:
+            raise ValueError('Unable to find title')
+
+    # sort out our title
+    if title:
+        title = ' '.join(title)
+        new_note = tomboy.CreateNamedNote(title)
+    else:
+        new_note = tomboy.CreateNote()
+        title = tomboy.GetNoteTitle(new_note)
+        print('New note: %s' % title)
+
+    if not new_note:
+        print('Unable to create note: %s' % title)
+        return 1
+
     tomboy.AddTagToNote(new_note, "commandline")
     if xml:
-        # TODO - validate content
+        # replace the title in contents
+        node.data = title + '\n\n' + parts[1]
+        contents = top.toxml()
         tomboy.SetNoteContentsXml(new_note, contents)
         if show:
             tomboy.DisplayNote(new_note)
