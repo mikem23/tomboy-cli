@@ -13,6 +13,53 @@ import gobject
 # see: https://arstechnica.com/information-technology/2007/09/using-the-tomboy-d-bus-interface/
 
 
+class Note(object):
+
+    def __init__(self, uri, interface=None):
+        self.uri = uri
+        self.interface = interface or get_interface()
+
+    @property
+    def tags(self):
+        return self.interface.GetTagsForNote(self.uri) or []
+
+    @property
+    def title(self):
+        return self.interface.GetNoteTitle(self.uri)
+
+    @property
+    def contents(self):
+        return self.interface.GetNoteContents(self.uri)
+
+    @property
+    def contents_xml(self):
+        return self.interface.GetNoteContentsXml(self.uri)
+
+    @property
+    def xml(self):
+        return self.interface.GetCompleteXml(self.uri)
+
+    def add_tag(self, tag):
+        return self.interface.AddTagToNote(self.uri, str(tag))
+
+    def display(self, search=False):
+        if search:
+            return self.interface.DisplayNoteWithSearch(self.uri)
+        else:
+            return self.interface.DisplayNote(self.uri)
+
+    def hide(self):
+        return self.interface.HideNote(self.uri)
+
+    @property
+    def create_date(self):
+        return self.interface.GetNoteCreateDate(self.uri)
+
+    @property
+    def change_date(self):
+        return self.interface.GetNoteChangeDate(self.uri)
+
+
 @click.group()
 def tb():
     # main command
@@ -31,12 +78,11 @@ def list(tag, notebook, show_tags):
         notes = tomboy.GetAllNotesWithTag(tag)
     else:
         notes = tomboy.ListAllNotes()
-    titles = [(tomboy.GetNoteTitle(n), n) for n in notes]
-    for title, uri in sorted(titles):
-        print(title)
+    notes = [Note(uri) for uri in notes]
+    for note in sorted(notes, key = lambda n: n.title):
+        print note.title
         if show_tags:
-            tags = tomboy.GetTagsForNote(uri) or []
-            for t in tags:
+            for t in note.tags:
                 print "    - %s" % t
 
 
@@ -103,8 +149,7 @@ def watch():
     gobject.MainLoop().run()
 
 
-def setup():
-    global tomboy
+def get_interface():
     # Get the D-Bus session bus
     bus = dbus.SessionBus()
     # Access the Tomboy D-Bus object
@@ -113,6 +158,7 @@ def setup():
             "/org/gnome/Tomboy/RemoteControl")
     # Access the Tomboy remote control interface
     tomboy = dbus.Interface(obj, "org.gnome.Tomboy.RemoteControl")
+    return tomboy
 
 
 @tb.command('mknote')
@@ -237,7 +283,8 @@ def dup(note, new_title, show):
 
 if __name__ == '__main__':
     try:
-        setup()
+        # TODO: avoid tomboy global
+        tomboy = get_interface()
         tb()
     except Exception:
         etype, e, tb = sys.exc_info()
