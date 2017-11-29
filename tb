@@ -19,6 +19,9 @@ class Note(object):
         self.uri = uri
         self.interface = interface or get_interface()
 
+    def __str__(self):
+        return 'Note(%r)' % self.uri
+
     @property
     def tags(self):
         return self.interface.GetTagsForNote(self.uri) or []
@@ -37,7 +40,7 @@ class Note(object):
 
     @property
     def xml(self):
-        return self.interface.GetCompleteXml(self.uri)
+        return self.interface.GetNoteCompleteXml(self.uri)
 
     def add_tag(self, tag):
         return self.interface.AddTagToNote(self.uri, str(tag))
@@ -67,7 +70,7 @@ class NoteParamType(click.ParamType):
         # TODO: avoid tomboy global
         uri = tomboy.FindNote(value)
         if not uri:
-            self.fail('No such note:' % value, param, ctx)
+            self.fail('No such note: %s' % value, param, ctx)
         return Note(uri)
 
 NOTE = NoteParamType()
@@ -122,13 +125,13 @@ def show(note, xml, xml_contents):
 
 @tb.command('tag')
 @click.option('-b/', '--notebook/--no-notebook', help='add notebook tag')
-@click.argument('note')
+@click.argument('note', type=NOTE)
 @click.argument('tag')
 def tag(notebook, note, tag):
     """Add a tag to a note"""
     if notebook:
         tag = "system:notebook:archive:%s"
-    tomboy.AddTagToNote(tomboy.FindNote(note), tag)
+    note.add_tag(tag)
 
 
 @tb.command()
@@ -249,22 +252,19 @@ def mknote(title, show, xml, filename, test):
 
 
 @tb.command('dup')
-@click.argument('note')
+@click.argument('note', type=NOTE)
 @click.option('--new-title', '-t', help='title for the new note')
 @click.option('--show/--no-show', '-s/')
 def dup(note, new_title, show):
     """Duplicate a note"""
-    src = tomboy.FindNote(note)
-    if not src:
-        print('No such note: %s' % note)
-        return 1
+    src = note
     if not new_title:
-        new_title = "Copy of %s" % tomboy.GetNoteTitle(src)
+        new_title = "Copy of %s" % src.title
     chk = tomboy.FindNote(new_title)
     if chk:
         print('Already exists: %s' % new_title)
         return 1
-    contents = tomboy.GetNoteContentsXml(src)
+    contents = src.contents_xml
     if not contents:
         # should not happen
         print('No contents for note: %s' % src)
