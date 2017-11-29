@@ -60,6 +60,19 @@ class Note(object):
         return self.interface.GetNoteChangeDate(self.uri)
 
 
+class NoteParamType(click.ParamType):
+    name = 'note'
+
+    def convert(self, value, param, ctx):
+        # TODO: avoid tomboy global
+        uri = tomboy.FindNote(value)
+        if not uri:
+            self.fail('No such note:' % value, param, ctx)
+        return Note(uri)
+
+NOTE = NoteParamType()
+
+
 @click.group()
 def tb():
     # main command
@@ -93,19 +106,18 @@ def start():
 
 
 @tb.command('show')
-@click.argument('note')
+@click.argument('note', type=NOTE)
 @click.option('--xml/--no-xml', help='show complete xml')
 @click.option('--xc/', '--xml-contents/--no-xml-contents',
               help='show xml contents')
 def show(note, xml, xml_contents):
     """Output the contents of the note"""
-    note = tomboy.FindNote(note)
     if xml:
-        print tomboy.GetNoteCompleteXml(note)
+        print note.xml
     elif xml_contents:
-        print tomboy.GetNoteContentsXml(note)
+        print note.contents_xml
     else:
-        print tomboy.GetNoteContents(note)
+        print note.contents
 
 
 @tb.command('tag')
