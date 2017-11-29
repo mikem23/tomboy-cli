@@ -73,6 +73,7 @@ class NoteParamType(click.ParamType):
             self.fail('No such note: %s' % value, param, ctx)
         return Note(uri)
 
+
 NOTE = NoteParamType()
 
 
@@ -95,7 +96,7 @@ def list(tag, notebook, show_tags):
     else:
         notes = tomboy.ListAllNotes()
     notes = [Note(uri) for uri in notes]
-    for note in sorted(notes, key = lambda n: n.change_date):
+    for note in sorted(notes, key=lambda n: n.change_date):
         print note.title
         if show_tags:
             for t in note.tags:
