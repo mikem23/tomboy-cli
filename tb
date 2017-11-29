@@ -140,14 +140,16 @@ def watch():
     bus = dbus.SessionBus()
 
     def onNoteAdded(uri):
-        print "Note created: %s" % uri
+        note = Note(uri)
+        print "Note created: %s (%s)" % (note.title, uri)
     bus.add_signal_receiver(
             onNoteAdded,
             dbus_interface="org.gnome.Tomboy.RemoteControl",
             signal_name="NoteAdded")
 
     def onNoteSaved(uri):
-        print "Note %s saved!" % tomboy.GetNoteTitle(uri)
+        note = Note(uri)
+        print "Note %s saved!" % note.title
     bus.add_signal_receiver(
             onNoteSaved,
             dbus_interface="org.gnome.Tomboy.RemoteControl",
