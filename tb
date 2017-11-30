@@ -77,6 +77,30 @@ class NoteParamType(click.ParamType):
 NOTE = NoteParamType()
 
 
+class Tomboy(object):
+
+    def __init__(self, interface=None):
+        self.interface = interface or get_interface()
+
+    def list(self, tag=None, notebook=None):
+        if notebook is not None:
+            tag = "system:notebook:%s" % notebook
+        if tag is not None:
+            return [Note(n) for n in self.interface.GetAllNotesWithTag(tag)]
+        else:
+            return [Note(n) for n in self.interface.ListAllNotes()]
+
+    def get_start(self):
+        """Return start note"""
+        return Note(self.interface.FindStartHereNote())
+
+    def new_note(self, title=None):
+        if title is None:
+            return Note(self.interface.CreateNote())
+        else:
+            return Note(self.interface.CreateNamedNote(title))
+
+
 @click.group()
 def tb():
     # main command
@@ -89,13 +113,8 @@ def tb():
 @click.option('--show-tags/--no-show-tags', help='show tags')
 def list(tag, notebook, show_tags):
     """List notes"""
-    if notebook:
-        tag = "system:notebook:%s" % notebook
-    if tag:
-        notes = tomboy.GetAllNotesWithTag(tag)
-    else:
-        notes = tomboy.ListAllNotes()
-    notes = [Note(uri) for uri in notes]
+    t = Tomboy()
+    notes = t.list(tag, notebook)
     for note in sorted(notes, key=lambda n: n.change_date):
         print note.title
         if show_tags:
@@ -106,7 +125,8 @@ def list(tag, notebook, show_tags):
 @tb.command('start')
 def start():
     """Display the Start Here note"""
-    tomboy.DisplayNote(tomboy.FindStartHereNote())
+    t = Tomboy()
+    t.get_start().display()
 
 
 @tb.command('show')
@@ -184,8 +204,7 @@ def get_interface():
 @click.option('--show/--no-show', '-s/')
 @click.option('--xml/--no-xml', '-x/')
 @click.option('-f', '--file', '--filename')
-@click.option('--test/--no-test', '-n/')
-def mknote(title, show, xml, filename, test):
+def mknote(title, show, xml, filename):
     """Create a note from stdin or file"""
 
     # read our content
@@ -208,50 +227,34 @@ def mknote(title, show, xml, filename, test):
         if len(parts) < 2:
             raise ValueError('Unable to find title')
 
-    # sort out our title
     if title:
         title = ' '.join(title)
-        if test:
-            new_note = 'TEST'
-        else:
-            new_note = tomboy.CreateNamedNote(title)
-    else:
-        if test:
-            title = 'UNKNOWN'
-            new_note = 'TEST'
-        else:
-            new_note = tomboy.CreateNote()
-            title = tomboy.GetNoteTitle(new_note)
-    print('New note: %s' % title)
+    t = Tomboy()
+    note = t.new_note(title=title)
+    print('New note: %s' % note.title)
 
-    if not new_note:
+    if not note.uri:  # XXX
         print('Unable to create note: %s' % title)
         return 1
 
-    if not test:
-        tomboy.AddTagToNote(new_note, "commandline")
+    note.add_tag("commandline")
 
     if xml:
         # replace the title in contents
         node.data = title + '\n\n' + parts[1]
         contents = top.toxml()
-        if test:
-            print(contents)
-            return
-        tomboy.SetNoteContentsXml(new_note, contents)
+        tomboy.SetNoteContentsXml(note.uri, contents)  # XXX
         if show:
-            tomboy.DisplayNote(new_note)
-    elif test:
-        return
+            note.display()
     else:
-        contents = tomboy.GetNoteTitle(new_note) + "\n\n" + contents
+        contents = note.title + "\n\n" + contents
         # [!] Workaround for a bug in Tomboy
         #     We must display the note before updating contents
         #     see: https://osmanov-dev-notes.blogspot.com/2010/10/importing-text-files-into-tomboy.html
-        tomboy.DisplayNote(new_note)
-        tomboy.SetNoteContents(new_note, contents)
+        note.display()
+        tomboy.SetNoteContents(note.uri, contents)  # XXX
         if not show:
-            tomboy.HideNote(new_note)
+            note.hide()
 
 
 @tb.command('dup')
@@ -296,12 +299,17 @@ def dup(note, new_title, show):
         tomboy.DisplayNote(new_note)
 
 
-if __name__ == '__main__':
+def main():
+    global tomboy
     try:
         # TODO: avoid tomboy global
         tomboy = get_interface()
         tb()
     except Exception:
-        etype, e, tb = sys.exc_info()
+        etype, e, trace = sys.exc_info()
         traceback.print_exc()
-        pdb.post_mortem(tb)
+        pdb.post_mortem(trace)
+
+
+if __name__ == '__main__':
+    main()
