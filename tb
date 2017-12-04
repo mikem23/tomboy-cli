@@ -57,6 +57,17 @@ class Note(object):
     def add_tag(self, tag):
         return self.interface.AddTagToNote(self.uri, str(tag))
 
+    def remove_tag(self, tag):
+        return self.interface.RemoveTagFromNote(self.uri, str(tag))
+
+    @property
+    def notebook(self):
+        return self.interface.GetNotebookForNote(self.uri)
+
+    # should this be part of the property?
+    def add_to_notebook(self, notebook):
+        return self.interface.AddNoteToNotebook(self.uri, notebook)
+
     def display(self, search=None):
         if search:
             return self.interface.DisplayNoteWithSearch(self.uri, search)
@@ -103,8 +114,9 @@ class Tomboy(object):
 
     def list(self, tag=None, notebook=None):
         if notebook is not None:
-            tag = "system:notebook:%s" % notebook
-        if tag is not None:
+            notes = self.interface.GetAllNotesInNotebook(notebook)
+            return [Note(n) for n in notes]
+        elif tag is not None:
             return [Note(n) for n in self.interface.GetAllNotesWithTag(tag)]
         else:
             return [Note(n) for n in self.interface.ListAllNotes()]
@@ -132,6 +144,18 @@ class Tomboy(object):
             self.interface.DisplaySearch()
         else:
             self.interface.DisplaySearchWithSearch(text)
+
+    @property
+    def version(self):
+        return self.interface.Version()
+
+    def add_notebook(name):
+        return self.interface.AddNotebook(name)
+
+    def search(query, case_sensitive):
+        uris = self.interface.SearchNotes(query, bool(case_sensititive))
+        return [Note(u) for u in uris]
+
 
 
 @click.group()
