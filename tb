@@ -168,8 +168,9 @@ def tb():
 @click.option('-t', '--tag', help='list notes with tag')
 @click.option('-b/', '--notebook', help='list notes in notebook')
 @click.option('--show-tags/--no-show-tags', help='show tags')
+@click.option('--show-notebooks/--no-show-notebooks', help='show notebooks')
 @click.option('-u/', '--show-uris/--no-show-uris', help='show note uris')
-def list(tag, notebook, show_tags, show_uris):
+def list(tag, notebook, show_tags, show_notebooks, show_uris):
     """List notes"""
     t = Tomboy()
     notes = t.list(tag, notebook)
@@ -178,9 +179,13 @@ def list(tag, notebook, show_tags, show_uris):
             print "%s %s" % (note.uri, note.title)
         else:
             print note.title
+        if show_notebooks:
+            notebook = note.notebook
+            if notebook:
+                print "    notebook: %s" % notebook
         if show_tags:
-            for t in note.tags:
-                print "    - %s" % t
+            for tag in note.tags:
+                print "    tag: %s" % tag
 
 
 @tb.command('start')
@@ -212,7 +217,7 @@ def show(note, xml, xml_contents):
 def tag(notebook, note, tag):
     """Add a tag to a note"""
     if notebook:
-        tag = "system:notebook:archive:%s"
+        tag = "system:notebook:%s" % tag
     note.add_tag(tag)
 
 
