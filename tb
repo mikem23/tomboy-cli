@@ -45,9 +45,9 @@ class Note(object):
     def add_tag(self, tag):
         return self.interface.AddTagToNote(self.uri, str(tag))
 
-    def display(self, search=False):
+    def display(self, search=None):
         if search:
-            return self.interface.DisplayNoteWithSearch(self.uri)
+            return self.interface.DisplayNoteWithSearch(self.uri, search)
         else:
             return self.interface.DisplayNote(self.uri)
 
@@ -62,16 +62,23 @@ class Note(object):
     def change_date(self):
         return self.interface.GetNoteChangeDate(self.uri)
 
+    def delete(self):
+        return self.interface.DeleteNote(self.uri)
+
+    def exists(self):
+        return self.interace.NoteExists(self.uri)
+
 
 class NoteParamType(click.ParamType):
     name = 'note'
 
     def convert(self, value, param, ctx):
         # TODO: avoid tomboy global
-        uri = tomboy.FindNote(value)
-        if not uri:
+        t = Tomboy()
+        note =t.find(value)
+        if not note:
             self.fail('No such note: %s' % value, param, ctx)
-        return Note(uri)
+        return note
 
 
 NOTE = NoteParamType()
@@ -95,10 +102,24 @@ class Tomboy(object):
         return Note(self.interface.FindStartHereNote())
 
     def new_note(self, title=None):
+        # Should we also support CreateNamedNoteWithUri ?
         if title is None:
             return Note(self.interface.CreateNote())
         else:
             return Note(self.interface.CreateNamedNote(title))
+
+    def find(self, title):
+        uri = self.interface.FindNote(title)
+        if not uri:
+            return None
+        else:
+            return Note(uri)
+
+    def display_search(self, text=None):
+        if text is None:
+            self.interface.DisplaySearch()
+        else:
+            self.interface.DisplaySearchWithSearch(text)
 
 
 @click.group()
@@ -270,7 +291,8 @@ def dup(note, new_title, show):
     src = note
     if not new_title:
         new_title = "Copy of %s" % src.title
-    chk = tomboy.FindNote(new_title)
+    t = Tomboy()
+    chk = t.find(new_title)
     if chk:
         print('Already exists: %s' % new_title)
         return 1
