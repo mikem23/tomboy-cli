@@ -64,9 +64,11 @@ class Note(object):
     def notebook(self):
         return self.interface.GetNotebookForNote(self.uri)
 
-    # should this be part of the property?
-    def add_to_notebook(self, notebook):
-        return self.interface.AddNoteToNotebook(self.uri, notebook)
+    @notebook.setter
+    def notebook(self, value):
+        # This call appears to set the notebook. That is, if the note already
+        # has a notebook, this *replaces* it.
+        return self.interface.AddNoteToNotebook(self.uri, value)
 
     def display(self, search=None):
         if search:
@@ -149,11 +151,15 @@ class Tomboy(object):
     def version(self):
         return self.interface.Version()
 
-    def add_notebook(name):
+    def add_notebook(self, name):
         return self.interface.AddNotebook(name)
 
-    def search(query, case_sensitive):
-        uris = self.interface.SearchNotes(query, bool(case_sensititive))
+    def search(self, query, case_sensitive):
+        print "case sensitive = %r" % case_sensitive
+        if not case_sensitive:
+            # Work around a bug in Tomboy
+            query = query.lower()
+        uris = self.interface.SearchNotes(query, bool(case_sensitive))
         return [Note(u) for u in uris]
 
 
@@ -186,6 +192,17 @@ def list(tag, notebook, show_tags, show_notebooks, show_uris):
         if show_tags:
             for tag in note.tags:
                 print "    tag: %s" % tag
+
+@tb.command('search')
+@click.argument('query')
+@click.option('--case/--nocase', '-c/-i', default=False)
+# case-insensitive *by default*
+def search(query, case):
+    t = Tomboy()
+    notes = t.search(query, case)
+    for note in sorted(notes, key=lambda n: n.change_date):
+        print note.title
+    # TODO - combine output code with list
 
 
 @tb.command('start')
@@ -220,6 +237,12 @@ def tag(notebook, note, tag):
         tag = "system:notebook:%s" % tag
     note.add_tag(tag)
 
+@tb.command('set-notebook')
+@click.argument('note', type=NOTE)
+@click.argument('notebook')
+def set_notebook(note, notebook):
+    """Add note to notebook"""
+    note.notebook = notebook
 
 @tb.command()
 def watch():
