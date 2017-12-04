@@ -100,7 +100,7 @@ class NoteParamType(click.ParamType):
     def convert(self, value, param, ctx):
         # TODO: avoid tomboy global
         t = Tomboy()
-        note =t.find(value)
+        note = t.find(value)
         if not note:
             self.fail('No such note: %s' % value, param, ctx)
         return note
@@ -163,7 +163,6 @@ class Tomboy(object):
         return [Note(u) for u in uris]
 
 
-
 @click.group()
 def tb():
     # main command
@@ -192,6 +191,7 @@ def list(tag, notebook, show_tags, show_notebooks, show_uris):
         if show_tags:
             for tag in note.tags:
                 print "    tag: %s" % tag
+
 
 @tb.command('search')
 @click.argument('query')
@@ -237,12 +237,14 @@ def tag(notebook, note, tag):
         tag = "system:notebook:%s" % tag
     note.add_tag(tag)
 
+
 @tb.command('set-notebook')
 @click.argument('note', type=NOTE)
 @click.argument('notebook')
 def set_notebook(note, notebook):
     """Add note to notebook"""
     note.notebook = notebook
+
 
 @tb.command()
 def watch():
