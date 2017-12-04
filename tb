@@ -34,13 +34,25 @@ class Note(object):
     def contents(self):
         return self.interface.GetNoteContents(self.uri)
 
+    @contents.setter
+    def contents(self, value):
+        return self.interface.SetNoteContents(self.uri, value)
+
     @property
     def contents_xml(self):
         return self.interface.GetNoteContentsXml(self.uri)
 
+    @contents_xml.setter
+    def contents_xml(self, value):
+        return self.interface.SetNoteContentsXml(self.uri, value)
+
     @property
     def xml(self):
         return self.interface.GetNoteCompleteXml(self.uri)
+
+    @xml.setter
+    def xml(self, value):
+        return self.interface.SetNoteCompleteXml(self.uri, value)
 
     def add_tag(self, tag):
         return self.interface.AddTagToNote(self.uri, str(tag))
@@ -268,7 +280,7 @@ def mknote(title, show, xml, filename):
         # replace the title in contents
         node.data = title + '\n\n' + parts[1]
         contents = top.toxml()
-        tomboy.SetNoteContentsXml(note.uri, contents)  # XXX
+        note.contents_xml = contents
         if show:
             note.display()
     else:
@@ -277,7 +289,7 @@ def mknote(title, show, xml, filename):
         #     We must display the note before updating contents
         #     see: https://osmanov-dev-notes.blogspot.com/2010/10/importing-text-files-into-tomboy.html
         note.display()
-        tomboy.SetNoteContents(note.uri, contents)  # XXX
+        note.contents = contents
         if not show:
             note.hide()
 
@@ -318,11 +330,11 @@ def dup(note, new_title, show):
     # ok, replace the title
     node.data = new_title + '\n\n' + parts[1]
     contents = top.toxml()
-    new_note = tomboy.CreateNamedNote(new_title)
-    tomboy.AddTagToNote(new_note, "duplicate")
-    tomboy.SetNoteContentsXml(new_note, contents)
+    dup = t.new_note(new_title)
+    dup.add_tag("duplicate")
+    dup.contents_xml = contents
     if show:
-        tomboy.DisplayNote(new_note)
+        dup.display()
 
 
 def main():
